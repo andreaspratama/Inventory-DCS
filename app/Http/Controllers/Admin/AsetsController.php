@@ -13,6 +13,9 @@ use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 use Spatie\Permission\Traits\HasRoles;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
+use Intervention\Image\Encoders\PngEncoder;
 
 
 class AsetsController extends Controller
@@ -114,54 +117,109 @@ class AsetsController extends Controller
      */
     public function store(Request $request)
     {
+        // ================= VALIDASI =================
         $data = $request->validate([
-            'nama' => 'required|string',
-            'type_id' => 'required|integer',
-            'unit_id' => 'required|integer',
-            'brand' => 'required|string',
-            'jumlah' => 'required|integer',
-            'ruang_id' => 'nullable|string',
-            'harga' => 'required|numeric',
-            'tgl_beli' => 'required|date',
-            'deskripsi' => 'nullable|string',
-            'other_lokasi' => 'nullable|string',
+            'nama'          => 'required|string',
+            'type_id'       => 'required|integer',
+            'unit_id'       => 'required|integer',
+            'brand'         => 'required|string',
+            'jumlah'        => 'required|integer',
+            'ruang_id'      => 'nullable|string',
+            'harga'         => 'nullable|numeric',
+            'tgl_beli'      => 'nullable|date',
+            'deskripsi'     => 'nullable|string',
+            'other_lokasi'  => 'nullable|string',
+            'sumber'        => 'required|string',
+            'kode_brg'        => 'required|string',
         ]);
 
-        // Jika pilih OTHER → ruang_id = null, pakai other_lokasi
-        if ($request->ruang_id === 'OTHER') {
-            $data['ruang_id'] = null;
-            $tempat = $request->other_lokasi;
-        } else {
-            // Jika bukan OTHER → other_lokasi = null
-            $data['other_lokasi'] = null;
-
-            $ruang = \App\Models\Ruang::find($request->ruang_id);
-            $tempat = $ruang ? $ruang->nama : 'Unknown';
+        // ================= NORMALISASI DATA =================
+        foreach ($data as $key => $value) {
+            if ($value === '') {
+                $data[$key] = null;
+            }
         }
 
-        // Buat QR Code
-        $qrData = "Nama: {$request->nama}\n"
-                . "Type ID: {$request->type_id}\n"
-                . "Unit ID: {$request->unit_id}\n"
-                . "Brand: {$request->brand}\n"
-                . "Jumlah: {$request->jumlah}\n"
-                . "Tanggal Beli: {$request->tgl_beli}\n"
-                . "Ruang: {$tempat}\n"
-                . "Deskripsi: {$request->deskripsi}";
+        // ================= HANDLE RUANG =================
+        if ($request->ruang_id === 'OTHER') {
+            $data['ruang_id'] = null;
+            $tempat = $data['other_lokasi'];
+        } else {
+            $data['other_lokasi'] = null;
+            $ruang = Ruang::find($request->ruang_id);
+            $tempat = $ruang?->nama ?? 'Unknown';
+        }
 
+        // ================= DATA QR =================
+        $qrData = "Nama: {$data['nama']}\n"
+            . "Kode Barang: {$data['kode_brg']}\n"
+            . "Type ID: {$data['type_id']}\n"
+            . "Unit ID: {$data['unit_id']}\n"
+            . "Brand: {$data['brand']}\n"
+            . "Jumlah: {$data['jumlah']}\n"
+            . "Harga: " . ($data['harga'] ?? '-') . "\n"
+            . "Tanggal Beli: " . ($data['tgl_beli'] ?? '-') . "\n"
+            . "Ruang: {$tempat}\n"
+            . "Sumber: {$data['sumber']}";
+
+        // ================= WARNA QR & TEKS =================
+        if ($data['sumber'] === 'Pemerintah / BOS') {
+            $qrColor   = [150, 0, 0];   // merah tua
+            $textColor = '#8B0000';
+        } else {
+            $qrColor   = [0, 0, 0];     // hitam
+            $textColor = '#000000';
+        }
+
+        // ================= GENERATE QR BASE =================
+        $qrImage = QrCode::format('png')
+            ->size(300)
+            ->margin(2)
+            ->color($qrColor[0], $qrColor[1], $qrColor[2])
+            ->backgroundColor(255, 255, 255)
+            ->generate($qrData);
+
+        // ================= INTERVENTION IMAGE v3 =================
+        $manager = new ImageManager(new Driver());
+
+        $qr      = $manager->read((string) $qrImage);
+        $canvas  = $manager->create(300, 360)->fill('#ffffff');
+
+        // tempel QR
+        $canvas->place($qr, 'top');
+
+        // teks nama barang
+        $canvas->text(
+            $data['nama'],
+            150,
+            320,
+            function ($font) use ($textColor) {
+                $font->filename(public_path('fonts/arial.ttf'));
+                $font->size(18);
+                $font->color($textColor);
+                $font->align('center');
+            }
+        );
+
+        // ================= SIMPAN FILE =================
         $fileName = 'qrcode_' . time() . '.png';
-        $path = 'qrcodes/' . $fileName;
+        $path     = 'qrcodes/' . $fileName;
 
-        Storage::disk('public')->put($path, QrCode::format('png')->size(300)->generate($qrData));
+        Storage::disk('public')->put(
+            $path,
+            $canvas->encode(new PngEncoder())
+        );
 
         $data['barcode'] = $path;
 
-        // Simpan aset
+        // ================= SIMPAN KE DB =================
         Asets::create($data);
 
-        return redirect()->route('asets.index')->with('success', 'Data Berhasil Ditambahkan dan QR Code Dibuat');
+        // ================= REDIRECT =================
+        return redirect()
+            ->route('asets.index')
+            ->with('success', 'Data aset berhasil ditambahkan dan QR Code berhasil dibuat');
     }
-
 
     /**
      * Display the specified resource.
@@ -225,40 +283,159 @@ class AsetsController extends Controller
      */
     public function update(Request $request, $id)
     {
-        $request->validate([
-            'unit_id' => 'required',
-            'type_id' => 'required',
-            'nama' => 'required',
-            'brand' => 'nullable|string',
-            'deskripsi' => 'nullable|string',
-            'harga' => 'required',
-            'ruang_id' => 'required',
-            'other_lokasi' => 'nullable|string'
+        // ================= VALIDASI =================
+        $data = $request->validate([
+            'unit_id'       => 'required|integer',
+            'type_id'       => 'required|integer',
+            'nama'          => 'required|string',
+            'brand'         => 'nullable|string',
+            'harga'         => 'nullable|string',
+            'tgl_beli'      => 'nullable|date',
+            'sumber'        => 'required|string',
+            'ruang_id'      => 'required|string',
+            'other_lokasi'  => 'nullable|string',
         ]);
 
-        $item = Asets::findOrFail($id);
-
-        // Jika pilih OTHER
-        if ($request->ruang_id === 'OTHER') {
-            $item->ruang_id = null;
-            $item->other_lokasi = $request->other_lokasi; // simpan lokasi custom
+        // ================= NORMALISASI HARGA =================
+        if (!empty($data['harga'])) {
+            $data['harga'] = (int) preg_replace('/\D/', '', $data['harga']);
         } else {
-            $item->ruang_id = $request->ruang_id;
-            $item->other_lokasi = null; // pastikan tidak dobel
+            $data['harga'] = null;
         }
 
-        $item->unit_id = $request->unit_id;
-        $item->type_id = $request->type_id;
-        $item->nama = $request->nama;
-        $item->brand = $request->brand;
-        $item->harga = $request->harga;
-        $item->tgl_beli = $request->tgl_beli;
-        $item->deskripsi = $request->deskripsi;
+        $aset = Asets::findOrFail($id);
 
-        $item->save();
+        // ================= HANDLE RUANG =================
+        if ($request->ruang_id === 'OTHER') {
+            $data['ruang_id'] = null;
+            $tempat = $request->other_lokasi;
+        } else {
+            $data['other_lokasi'] = null;
+            $ruang = Ruang::find($request->ruang_id);
+            $tempat = $ruang?->nama ?? 'Unknown';
+        }
 
-        return redirect()->route('asets.index')->with('success', 'Data asset berhasil diperbarui!');
+        // ================= CEK PERUBAHAN =================
+        $needRegenerateQr =
+            $aset->nama !== $data['nama'] ||
+            $aset->sumber !== $data['sumber'] ||
+            $aset->harga != $data['harga'] ||
+            $aset->ruang_id != $data['ruang_id'];
+
+        // ================= UPDATE DATA =================
+        $aset->update($data);
+
+        // ================= REGENERATE QR =================
+        if ($needRegenerateQr) {
+
+            // DATA QR
+            $qrData =
+                "Nama: {$aset->nama}\n" .
+                "Kode Barang: {$aset->kode_brg}\n" .
+                "Brand: {$aset->brand}\n" .
+                "Harga: " . ($aset->harga ? number_format($aset->harga, 0, ',', '.') : '-') . "\n" .
+                "Tanggal Beli: " . ($aset->tgl_beli ?? '-') . "\n" .
+                "Ruang: {$tempat}\n" .
+                "Sumber: {$aset->sumber}";
+
+            // WARNA QR
+            $qrColor = $aset->sumber === 'Pemerintah / BOS'
+                ? [150, 0, 0]   // merah
+                : [0, 0, 0];    // hitam
+
+            // HAPUS QR LAMA
+            if ($aset->barcode && Storage::disk('public')->exists($aset->barcode)) {
+                Storage::disk('public')->delete($aset->barcode);
+            }
+
+            // ================= GENERATE QR TEMP =================
+            $tempQrPath = storage_path('app/temp_qr.png');
+
+            file_put_contents(
+                $tempQrPath,
+                QrCode::format('png')
+                    ->size(300)
+                    ->margin(2)
+                    ->color($qrColor[0], $qrColor[1], $qrColor[2])
+                    ->backgroundColor(255, 255, 255)
+                    ->generate($qrData)
+            );
+
+            // ================= CANVAS + TEKS =================
+            $manager = new ImageManager(new Driver());
+
+            $canvas = $manager->create(300, 360)->fill('#ffffff');
+            $qr     = $manager->read($tempQrPath);
+
+            // tempel QR
+            $canvas->place($qr, 'top');
+
+            // teks nama barang
+            $canvas->text($aset->nama, 150, 320, function ($font) {
+                $font->size(18);
+                $font->filename(public_path('fonts/arial.ttf'));
+                $font->color('#000000');
+                $font->align('center');
+                $font->valign('middle');
+            });
+
+            // ================= SIMPAN =================
+            $fileName = 'qrcode_' . time() . '.png';
+            $path = 'qrcodes/' . $fileName;
+
+            Storage::disk('public')->put(
+                $path,
+                (string) $canvas->encode(new PngEncoder())
+            );
+
+            @unlink($tempQrPath);
+
+            $aset->update([
+                'barcode' => $path
+            ]);
+        }
+
+        return redirect()
+            ->route('asets.index')
+            ->with('success', 'Data aset & QR Code berhasil diperbarui');
     }
+
+    // public function update(Request $request, $id)
+    // {
+    //     $request->validate([
+    //         'unit_id' => 'required',
+    //         'type_id' => 'required',
+    //         'nama' => 'required',
+    //         'brand' => 'nullable|string',
+    //         'sumber' => 'required|string',
+    //         'ruang_id' => 'required',
+    //         'other_lokasi' => 'nullable|string'
+    //     ]);
+
+    //     $item = Asets::findOrFail($id);
+
+    //     // Jika pilih OTHER
+    //     if ($request->ruang_id === 'OTHER') {
+    //         $item->ruang_id = null;
+    //         $item->other_lokasi = $request->other_lokasi; // simpan lokasi custom
+    //     } else {
+    //         $item->ruang_id = $request->ruang_id;
+    //         $item->other_lokasi = null; // pastikan tidak dobel
+    //     }
+
+    //     $item->unit_id = $request->unit_id;
+    //     $item->type_id = $request->type_id;
+    //     $item->nama = $request->nama;
+    //     $item->kode_brg = $request->kode_brg;
+    //     $item->brand = $request->brand;
+    //     $item->harga = $request->harga;
+    //     $item->tgl_beli = $request->tgl_beli;
+    //     $item->sumber = $request->sumber;
+
+    //     $item->save();
+
+    //     return redirect()->route('asets.index')->with('success', 'Data asset berhasil diperbarui!');
+    // }
 
     /**
      * Remove the specified resource from storage.

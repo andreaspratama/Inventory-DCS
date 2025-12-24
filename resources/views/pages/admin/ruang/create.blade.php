@@ -59,8 +59,8 @@
                       @enderror
                     </div>
                     <div class="mb-4">
-                      <label class="form-label" for="nama">Lokasi</label>
-                      <input type="text" class="form-control @error('nama') is-invalid @enderror" id="nama" name="nama" placeholder="Lokasi" value="{{ old('nama') }}">
+                      <label class="form-label" for="nama">Lokasi / Ruang</label>
+                      <input type="text" class="form-control @error('nama') is-invalid @enderror" id="nama" name="nama" placeholder="Lokasi / Ruang" value="{{ old('nama') }}">
                       {{-- Error message --}}
                       @error('nama')
                           <div class="invalid-feedback d-block">

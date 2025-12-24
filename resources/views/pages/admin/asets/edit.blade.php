@@ -93,6 +93,12 @@
                                 </select>
                             </div>
 
+                            <!-- KODE BARANG -->
+                            <div class="mb-4">
+                                <label class="form-label" for="kode_brg">Kode Barang</label>
+                                <input type="text" class="form-control" id="kode_brg" name="kode_brg" value="{{$item->kode_brg}}">
+                            </div>
+
                             <!-- NAMA -->
                             <div class="mb-4">
                                 <label class="form-label" for="nama">Nama Barang</label>
@@ -116,7 +122,7 @@
                                 <label class="form-label" for="harga">Harga Beli</label>
                                 <input type="text" class="form-control" 
                                         id="harga" name="harga" 
-                                        value="{{ number_format($item->harga, 0, ',', '.') }}">
+                                        value="{{ old('harga', number_format((int) preg_replace('/\D/', '', $item->getRawOriginal('harga')), 0, ',', '.')) }}">
                             </div>
 
                             <!-- TANGGAL BELI -->
@@ -125,10 +131,25 @@
                                 <input type="date" class="form-control" id="tgl_beli" name="tgl_beli" value="{{$item->tgl_beli}}">
                             </div>
 
-                            <!-- DESKRIPSI -->
+                            <!-- SUMBER DANA -->
                             <div class="mb-4">
-                                <label class="form-label" for="deskripsi">Deskripsi</label>
-                                <textarea class="form-control" id="deskripsi" name="deskripsi" rows="4">{{$item->deskripsi}}</textarea>
+                                <label class="form-label" for="sumber">
+                                    Sumber Dana <span class="text-danger">*</span>
+                                </label>
+
+                                <select class="form-select" id="sumber" name="sumber" required>
+                                    <option value="">-- Pilih Sumber Dana --</option>
+
+                                    <option value="Pemerintah / BOS"
+                                        {{ old('sumber', $item->sumber) == 'Pemerintah / BOS' ? 'selected' : '' }}>
+                                        Pemerintah / BOS
+                                    </option>
+
+                                    <option value="DCS"
+                                        {{ old('sumber', $item->sumber) == 'DCS' ? 'selected' : '' }}>
+                                        DCS
+                                    </option>
+                                </select>
                             </div>
 
                             <div>

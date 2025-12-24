@@ -66,7 +66,7 @@ Route::group(['middleware' => ['auth', 'checkRole:admin']], function(){
     });
 });
 
-Route::group(['middleware' => ['auth', 'checkRole:sarpra,admin']], function(){
+Route::group(['middleware' => ['auth', 'checkRole:sarpra,admin,ks']], function(){
     Route::prefix('assets')->group(function () {
         Route::get('/', [DashboardController::class, 'index'])->name('sarpra.dashboard');
 

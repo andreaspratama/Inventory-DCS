@@ -61,6 +61,7 @@
                         <option>-- Select Role --</option>
                         <option value="admin">Admin</option>
                         <option value="sarpra">Sarpra</option>
+                        <option value="ks">Kepala Sekolah</option>
                       </select>
                     </div>
                     <div class="mb-4">

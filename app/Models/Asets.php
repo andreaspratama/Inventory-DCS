@@ -11,6 +11,11 @@ class Asets extends Model
 
     protected $guarded = [];
 
+    protected $casts = [
+        'tgl_beli' => 'date',   // ⬅️ INI PENTING
+        'harga' => 'float',
+    ];
+
     public function type()
     {
         return $this->belongsTo(Type::class);

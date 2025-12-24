@@ -43,17 +43,18 @@
                   </div>
                 </div>
                 <div class="block-content">
-                  <table class="table table-vcenter" id="tableAsets">
+                  <table class="table table-vcenter table-responsive" id="tableAsets">
                     <thead>
                       <tr>
                         <th class="text-center" style="width: 50px;">#</th>
                         <th class="text-center">Unit</th>
                         <th class="text-center">Type</th>
-                        <th class="text-center" style="width: 20%">Nama</th>
+                        <th class="text-center">Kode Barang</th>
+                        <th class="text-center" style="width: 20%">Nama Barang</th>
                         <th class="text-center">Brand</th>
                         <th class="text-center">Jumlah</th>
                         <th class="text-center" style="width: 20%">Tempat</th>
-                        <th class="text-center" style="width: 30%">Deskripsi</th>
+                        <th class="text-center" style="width: 30%">Sumber Dana</th>
                         <th class="text-center" style="width: 30%">QrCode</th>
                         {{-- <th>Barcode</th> --}}
                         <th class="text-center">Aksi</th>
@@ -140,11 +141,12 @@
                 { data: 'number', name: 'number' },
                 { data: 'unit_id', name: 'unit_id' },
                 { data: 'type_id', name: 'type_id' },
+                { data: 'kode_brg', name: 'kode_brg' },
                 { data: 'nama', name: 'nama' },
                 { data: 'brand', name: 'brand' },
                 { data: 'jumlah', name: 'jumlah' },
                 { data: 'ruang_id', name: 'ruang_id' },
-                { data: 'deskripsi', name: 'deskripsi' },
+                { data: 'sumber', name: 'sumber' },
                 { data: 'barcode', name: 'barcode' },
                 {
                     data: 'aksi',

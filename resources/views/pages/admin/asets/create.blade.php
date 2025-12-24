@@ -44,7 +44,7 @@
                 <div class="row push">
                   <div class="col-lg-12 col-xl-12">
                     <div class="mb-4">
-                      <label class="form-label" for="unit_id">Unit</label>
+                      <label class="form-label" for="unit_id">Unit</label> <span class="text-danger">*</span>
                       <select class="form-select" id="unit_id" name="unit_id">
                         <option selected>Select Unit</option>
                         @foreach ($unit as $ut)
@@ -53,17 +53,17 @@
                       </select>
                     </div>
                     <div class="mb-4">
-                        <label class="form-label" for="ruang_id">Lokasi</label>
+                        <label class="form-label" for="ruang_id">Lokasi / Ruang</label> <span class="text-danger">*</span>
                         <select class="form-select" id="ruang_id" name="ruang_id">
-                            <option selected disabled>-- Pilih Lokasi --</option>
+                            <option selected disabled>-- Pilih Lokasi / Ruang --</option>
                         </select>
                     </div>
                     <div class="mb-4" id="other_lokasi_wrapper" style="display:none;">
-                        <label class="form-label">Lokasi Lainnya</label>
+                        <label class="form-label">Lokasi Lainnya</label> <span class="text-danger">*</span>
                         <input type="text" class="form-control" id="other_lokasi" name="other_lokasi" placeholder="Tulis lokasi lainnya">
                     </div>
                     <div class="mb-4">
-                      <label class="form-label" for="type_id">Type</label>
+                      <label class="form-label" for="type_id">Type</label> <span class="text-danger">*</span>
                       <select class="form-select" id="type_id" name="type_id">
                         <option selected>Select Type</option>
                         @foreach ($type as $tp)
@@ -72,15 +72,19 @@
                       </select>
                     </div>
                     <div class="mb-4">
-                      <label class="form-label" for="nama">Nama Barang</label>
+                      <label class="form-label" for="kode_brg">Kode Barang</label> <span class="text-danger">*</span>
+                      <input type="text" class="form-control" id="kode_brg" name="kode_brg" placeholder="Kode">
+                    </div>
+                    <div class="mb-4">
+                      <label class="form-label" for="nama">Nama Barang</label> <span class="text-danger">*</span>
                       <input type="text" class="form-control" id="nama" name="nama" placeholder="Nama">
                     </div>
                     <div class="mb-4">
-                      <label class="form-label" for="brand">Brand</label>
+                      <label class="form-label" for="brand">Brand</label> <span class="text-danger">*</span>
                       <input type="text" class="form-control" id="brand" name="brand" placeholder="Brand">
                     </div>
                     <div class="mb-4">
-                      <label class="form-label" for="jumlah">Jumlah</label>
+                      <label class="form-label" for="jumlah">Jumlah</label> <span class="text-danger">*</span>
                       <input type="text" class="form-control" id="jumlah" name="jumlah" placeholder="Jumlah">
                     </div>
                     <div class="mb-4">
@@ -89,17 +93,20 @@
                     </div>
                     <div class="mb-4">
                       <label class="form-label" for="tgl_beli">Tanggal Beli</label>
-                      <input type="date" class="form-control" id="tgl_beli" name="tgl_beli" placeholder="Tanggal Beli">
+                      <input type="date" class="form-control" id="tgl_beli" name="tgl_beli" placeholder="Tanggal Beli" min="{{ date('Y-m-d') }}">
                     </div>
                     <div class="mb-4">
-                        <label class="form-label fw-semibold" for="deskripsi">Deskripsi</label>
-                        <textarea class="form-control" id="deskripsi" name="deskripsi" rows="4">
-                            {{ old('deskripsi', $aset->deskripsi ?? '') }}
-                        </textarea>
+                      <label class="form-label" for="sumber">Sumber Dana</label> <span class="text-danger">*</span>
+                      <select class="form-select" id="sumber" name="sumber">
+                        <option>-- Pilih Sumber Dana --</option>
+                        <option value="Pemerintah / BOS">Pemerintah / BOS</option>
+                        <option value="DCS">DCS</option>
+                      </select>
                     </div>
+                    <span style="font-weight:bold">Note:</span> <span class="text-danger">*) Wajib untuk diisi</span>
                     <div>
-                       <button type="submit" class="btn btn-primary">Add</button>
-                       <a href="{{route('asets.index')}}" class="btn btn-secondary">Cancel</a>
+                       <button type="submit" class="btn btn-primary mt-4">Add</button>
+                       <a href="{{route('asets.index')}}" class="btn btn-secondary mt-4">Cancel</a>
                     </div>
                   </div>
                 </div>
@@ -126,7 +133,7 @@
                   dataType: 'json',
                   success: function(data) {
                       $('#ruang_id').empty();
-                      $('#ruang_id').append('<option selected disabled>-- Pilih Lokasi --</option>');
+                      $('#ruang_id').append('<option selected disabled>-- Pilih Lokasi / Ruang --</option>');
 
                       $.each(data, function(key, value) {
                           $('#ruang_id').append('<option value="' + value.id + '">' + value.nama + '</option>');

@@ -43,7 +43,11 @@
                         <div class="col-lg-12 col-xl-12">
 
                             <div class="row mb-3">
-                <div class="col-md-4"><strong>Nama Aset</strong></div>
+                <div class="col-md-4"><strong>Kode Barang</strong></div>
+                <div class="col-md-8">{{ $aset->kode_brg }}</div>
+            </div>
+                            <div class="row mb-3">
+                <div class="col-md-4"><strong>Nama Barang</strong></div>
                 <div class="col-md-8">{{ $aset->nama }}</div>
             </div>
 
@@ -82,7 +86,14 @@
             <div class="row mb-3">
                 <div class="col-md-4"><strong>Tanggal Pembelian</strong></div>
                 <div class="col-md-8">
-                    {{ \Carbon\Carbon::parse($aset->tgl_beli)->format('d M Y') }}
+                    {{ $aset->tgl_beli?->format('d-m-Y') ?? '-' }}
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Sumber Dana</strong></div>
+                <div class="col-md-8">
+                    {{ $aset->sumber }}
                 </div>
             </div>
 
