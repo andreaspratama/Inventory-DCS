@@ -39,6 +39,11 @@ class LoginauthController extends Controller
                     ->with('success', 'Berhasil login sebagai sarpra');
             }
 
+            if (Auth::user()->role == 'ks') {
+                return redirect()->route('sarpra.dashboard')
+                    ->with('success', 'Berhasil login sebagai Kepala Sekolah');
+            }
+
             return redirect()->back()->with('error', 'Role tidak dikenali.');
         }
 

@@ -122,6 +122,24 @@
                 <li class="nav-main-item">
                   <a class="nav-main-link nav-main-link-submenu" data-toggle="submenu" aria-haspopup="true" aria-expanded="false" href="#">
                     <i class="nav-main-link-icon si si-folder"></i>
+                    <span class="nav-main-link-name">Afkir</span>
+                  </a>
+                  <ul class="nav-main-submenu">
+                    <li class="nav-main-item">
+                      <a class="nav-main-link" href="{{route('afkir.index')}}">
+                        <span class="nav-main-link-name">List</span>
+                      </a>
+                    </li>
+                    <li class="nav-main-item">
+                      <a class="nav-main-link" href="{{route('afkir.create')}}">
+                        <span class="nav-main-link-name">Add</span>
+                      </a>
+                    </li>
+                  </ul>
+                </li>
+                <li class="nav-main-item">
+                  <a class="nav-main-link nav-main-link-submenu" data-toggle="submenu" aria-haspopup="true" aria-expanded="false" href="#">
+                    <i class="nav-main-link-icon si si-folder"></i>
                     <span class="nav-main-link-name">User</span>
                   </a>
                   <ul class="nav-main-submenu">
@@ -138,8 +156,8 @@
                   </ul>
                 </li>
               @endif
-              {{-- HAK AKSES SARPRA --}}
-              @if (in_array(auth()->user()->role, ['sarpra', 'ks']))
+              {{-- HAK AKSES KS --}}
+              @if (in_array(auth()->user()->role, ['ks']))
                 <li class="nav-main-item">
                   <a class="nav-main-link nav-main-link-submenu" data-toggle="submenu" aria-haspopup="true" aria-expanded="false" href="#">
                     <i class="nav-main-link-icon si si-folder"></i>
@@ -158,6 +176,24 @@
                           </a>
                         </li>
                     @endif
+                  </ul>
+                </li>
+                <li class="nav-main-item">
+                  <a class="nav-main-link nav-main-link-submenu" data-toggle="submenu" aria-haspopup="true" aria-expanded="false" href="#">
+                    <i class="nav-main-link-icon si si-folder"></i>
+                    <span class="nav-main-link-name">Afkir</span>
+                  </a>
+                  <ul class="nav-main-submenu">
+                    <li class="nav-main-item">
+                      <a class="nav-main-link" href="{{route('afkir.index')}}">
+                        <span class="nav-main-link-name">List</span>
+                      </a>
+                    </li>
+                    <li class="nav-main-item">
+                      <a class="nav-main-link" href="{{route('afkir.create')}}">
+                        <span class="nav-main-link-name">Add</span>
+                      </a>
+                    </li>
                   </ul>
                 </li>
               @endif

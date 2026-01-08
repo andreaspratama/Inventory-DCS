@@ -30,4 +30,9 @@ class Asets extends Model
     {
         return $this->belongsTo(Ruang::class);
     }
+
+    public function afkirs()
+    {
+        return $this->hasMany(Afkir::class);
+    }
 }

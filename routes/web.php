@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\RuangController;
 use App\Http\Controllers\Admin\TypeController;
 use App\Http\Controllers\Admin\AsetsController;
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\AfkirController;
 use App\Http\Controllers\LoginauthController;
 
 /*
@@ -53,6 +54,16 @@ Route::group(['middleware' => ['auth', 'checkRole:admin']], function(){
         // Route Type
         Route::get('deleteType/{id}', [TypeController::class, 'delete'])->name('delete');
         Route::resource('type', TypeController::class);
+
+        // Route Afkir
+        Route::get('deleteAfkir/{id}', [AfkirController::class, 'delete'])->name('delete');
+        Route::resource('afkir', AfkirController::class);
+        // Route Approve & Reject Afkir
+        Route::post('/afkir/{id}/approve', [AfkirController::class, 'approve'])
+            ->name('afkir.approve');
+
+        Route::post('/afkir/{id}/reject', [AfkirController::class, 'reject'])
+            ->name('afkir.reject');
     
         // Route Asets
         // Route::get('/get-ruang/{unit_id}', [AsetsController::class, 'getRuang'])->name('get.ruang');
@@ -81,6 +92,10 @@ Route::group(['middleware' => ['auth', 'checkRole:sarpra,admin,ks']], function()
         // Route Asets
         Route::get('deleteAset/{id}', [AsetsController::class, 'delete'])->name('delete');
         Route::resource('asets', AsetsController::class);
+
+        // Route Afkir
+        Route::get('deleteAfkir/{id}', [AfkirController::class, 'delete'])->name('delete');
+        Route::resource('afkir', AfkirController::class);
 
         // Route User
         // Route::get('deleteUser/{id}', [UserController::class, 'delete'])->name('delete');

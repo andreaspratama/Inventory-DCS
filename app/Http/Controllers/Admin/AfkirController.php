@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Asets;
 use App\Models\Type;
 use App\Models\Unit;
+use App\Models\Afkir;
 use App\Models\Ruang;
 use Yajra\DataTables\Facades\DataTables;
 use Illuminate\Support\Facades\Storage;
@@ -16,9 +17,10 @@ use Spatie\Permission\Traits\HasRoles;
 use Intervention\Image\ImageManager;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\Encoders\PngEncoder;
+use Illuminate\Support\Facades\DB;
 
 
-class AsetsController extends Controller
+class AfkirController extends Controller
 {
     /**
      * Display a listing of the resource.
@@ -29,7 +31,7 @@ class AsetsController extends Controller
     {
         if(request()->ajax())
         {
-            $query = Asets::query();
+            $query = Afkir::query();
 
             // ===== Filter berdasarkan role =====
             if (auth()->user()->role === 'ks') {
@@ -45,10 +47,10 @@ class AsetsController extends Controller
                 ->addColumn('aksi', function($item) {
                     return '
                         <div class="d-flex justify-content-center gap-2">
-                            <a href="' . route('asets.edit', $item->id) . '" class="btn btn-warning btn-sm">
+                            <a href="' . route('afkir.edit', $item->id) . '" class="btn btn-warning btn-sm">
                                 <i class="fa fa-fw fa-pencil-alt"></i>
                             </a>
-                            <a href="' . route('asets.show', $item->id) . '" class="btn btn-info btn-sm">
+                            <a href="' . route('afkir.show', $item->id) . '" class="btn btn-info btn-sm">
                                 <i class="fa fa-info"></i>
                             </a>
                             <a href="#" class="btn btn-danger btn-sm delete" data-id="'. $item->id .'">
@@ -57,37 +59,65 @@ class AsetsController extends Controller
                         </div>
                     ';
                 })
-                ->addColumn('barcode', function ($row) {
-                    $qrUrl = asset('storage/' . $row->barcode);
-                    $downloadUrl = route('downloadQRMultiple', $row->id);
-
-                    return '
-                        <div style="text-align:center">
-                            <img src="' . $qrUrl . '" width="80" alt="QR Code"><br>
-                            <a href="' . $downloadUrl . '" class="btn btn-sm btn-primary mt-1">
-                                <i class="fa fa-download"></i> Download
-                            </a>
-                        </div>
-                    ';
+                ->addColumn('aset_id', function($item) {
+                        return optional($item->aset)->nama ?? '-';
+                })
+                ->addColumn('user_id', function($item) {
+                        return optional($item->user)->name ?? '-';
                 })
                 ->addColumn('unit_id', function($item) {
                         return optional($item->unit)->nama ?? '-';
-                    })
-                    ->addColumn('ruang_id', function($item) {
-                        return optional($item->ruang)->nama 
-                            ?? $item->other_lokasi 
-                            ?? '-';
-                    })
-                ->addColumn('type_id', fn($item) => $item->type->nama)
+                })
+                ->addColumn('ruang_id', function($item) {
+                    return optional($item->ruang)->nama 
+                        ?? $item->other_lokasi 
+                        ?? '-';
+                })
+                ->addColumn('aksi_tindakan', function ($row) {
+
+                    // 🔒 hanya admin
+                    if (!auth()->user() || auth()->user()->role !== 'admin') {
+                        return '-';
+                    }
+
+                    if ($row->status !== 'pending') {
+                        return '-';
+                    }
+
+                    return '
+                        <div class="d-flex justify-content-center gap-2">
+
+                            <form action="'.route('afkir.approve', $row->id).'" method="POST">
+                                '.csrf_field().'
+                                <button type="submit"
+                                    class="btn btn-sm btn-success"
+                                    onclick="return confirm(\'Approve afkir ini?\')">
+                                    <i class="fa fa-check"></i>
+                                </button>
+                            </form>
+
+                            <form action="'.route('afkir.reject', $row->id).'" method="POST">
+                                '.csrf_field().'
+                                <button type="submit"
+                                    class="btn btn-sm btn-danger"
+                                    onclick="return confirm(\'Reject afkir ini?\')">
+                                    <i class="fa fa-times"></i>
+                                </button>
+                            </form>
+
+                        </div>
+                    ';
+                })
+
                 ->addColumn('number', function($item) {
                     static $count = 0;
                     return ++$count;
                 })
-                ->rawColumns(['aksi', 'barcode'])
+                ->rawColumns(['aksi', 'unit_id', 'aset_id', 'user_id', 'aksi_tindakan'])
                 ->make();
         }
 
-        return view('pages.admin.asets.index');
+        return view('pages.admin.afkir.index');
     }
 
     /**
@@ -99,6 +129,7 @@ class AsetsController extends Controller
     {
         $type = Type::all();
         $user = auth()->user();
+        $asets = Asets::all();
 
         if ($user->role == 'admin') {
             $unit = Unit::all();
@@ -106,7 +137,7 @@ class AsetsController extends Controller
             $unit = Unit::where('id', $user->unit_id)->get();
         }
 
-        return view('pages.admin.asets.create', compact('type', 'unit'));
+        return view('pages.admin.afkir.create', compact('type', 'unit','asets'));
     }
 
     /**
@@ -117,108 +148,35 @@ class AsetsController extends Controller
      */
     public function store(Request $request)
     {
-        // ================= VALIDASI =================
         $data = $request->validate([
-            'nama'          => 'required|string',
-            'type_id'       => 'required|integer',
-            'unit_id'       => 'required|integer',
-            'brand'         => 'required|string',
-            'jumlah'        => 'required|integer',
-            'ruang_id'      => 'nullable|string',
-            'harga'         => 'nullable|numeric',
-            'tgl_beli'      => 'nullable|date',
-            'deskripsi'     => 'nullable|string',
-            'other_lokasi'  => 'nullable|string',
-            'sumber'        => 'required|string',
-            'kode_brg'        => 'required|string',
+            'aset_id'       => 'required|exists:asets,id',
+            'unit_id'       => 'required|exists:units,id',
+            'jumlah'        => 'required|integer|min:1',
+            'tgl_afkir'     => 'nullable|date',
+            'kondisi'       => 'nullable|string',
+            'tindak_lanjut' => 'nullable|string',
+            'alasan'        => 'nullable|string',
+            'keterangan'    => 'nullable|string',
         ]);
 
-        // ================= NORMALISASI DATA =================
-        foreach ($data as $key => $value) {
-            if ($value === '') {
-                $data[$key] = null;
-            }
+        $aset = Asets::findOrFail($data['aset_id']);
+
+        // ❗ CEK STOK
+        if ($data['jumlah'] > $aset->jumlah) {
+            return back()->withErrors([
+                'jumlah' => 'Jumlah afkir melebihi stok tersedia'
+            ])->withInput();
         }
 
-        // ================= HANDLE RUANG =================
-        if ($request->ruang_id === 'OTHER') {
-            $data['ruang_id'] = null;
-            $tempat = $data['other_lokasi'];
-        } else {
-            $data['other_lokasi'] = null;
-            $ruang = Ruang::find($request->ruang_id);
-            $tempat = $ruang?->nama ?? 'Unknown';
-        }
+        Afkir::create([
+            ...$data,
+            'status'  => 'pending',
+            'user_id' => auth()->id()
+        ]);
 
-        // ================= DATA QR =================
-        $qrData = "Nama: {$data['nama']}\n"
-            . "Kode Barang: {$data['kode_brg']}\n"
-            . "Type ID: {$data['type_id']}\n"
-            . "Unit ID: {$data['unit_id']}\n"
-            . "Brand: {$data['brand']}\n"
-            . "Jumlah: {$data['jumlah']}\n"
-            . "Harga: " . ($data['harga'] ?? '-') . "\n"
-            . "Tanggal Beli: " . ($data['tgl_beli'] ?? '-') . "\n"
-            . "Ruang: {$tempat}\n"
-            . "Sumber: {$data['sumber']}";
-
-        // ================= WARNA QR & TEKS =================
-        if ($data['sumber'] === 'Pemerintah / BOS') {
-            $qrColor   = [150, 0, 0];   // merah tua
-            $textColor = '#8B0000';
-        } else {
-            $qrColor   = [0, 0, 0];     // hitam
-            $textColor = '#000000';
-        }
-
-        // ================= GENERATE QR BASE =================
-        $qrImage = QrCode::format('png')
-            ->size(300)
-            ->margin(2)
-            ->color($qrColor[0], $qrColor[1], $qrColor[2])
-            ->backgroundColor(255, 255, 255)
-            ->generate($qrData);
-
-        // ================= INTERVENTION IMAGE v3 =================
-        $manager = new ImageManager(new Driver());
-
-        $qr      = $manager->read((string) $qrImage);
-        $canvas  = $manager->create(300, 360)->fill('#ffffff');
-
-        // tempel QR
-        $canvas->place($qr, 'top');
-
-        // teks nama barang
-        $canvas->text(
-            $data['nama'],
-            150,
-            320,
-            function ($font) use ($textColor) {
-                $font->filename(public_path('fonts/arial.ttf'));
-                $font->size(18);
-                $font->color($textColor);
-                $font->align('center');
-            }
-        );
-
-        // ================= SIMPAN FILE =================
-        $fileName = 'qrcode_' . time() . '.png';
-        $path     = 'qrcodes/' . $fileName;
-
-        Storage::disk('public')->put(
-            $path,
-            $canvas->encode(new PngEncoder())
-        );
-
-        $data['barcode'] = $path;
-
-        // ================= SIMPAN KE DB =================
-        Asets::create($data);
-
-        // ================= REDIRECT =================
         return redirect()
-            ->route('asets.index')
-            ->with('success', 'Data aset berhasil ditambahkan dan QR Code berhasil dibuat');
+            ->route('afkir.index')
+            ->with('success', 'Pengajuan afkir berhasil, menunggu persetujuan');
     }
 
     /**
@@ -492,5 +450,53 @@ class AsetsController extends Controller
         $ruang = Ruang::where('unit_id', $unit_id)->get();
 
         return response()->json($ruang);
+    }
+
+    public function approve($id)
+    {
+        // 🔐 CEK ROLE
+        if (!auth()->user()->hasRole(['admin', 'ks'])) {
+            abort(403, 'Anda tidak punya akses approve afkir');
+        }
+
+        DB::transaction(function () use ($id) {
+
+            $afkir = Afkir::with('aset')->findOrFail($id);
+
+            // ❗ cegah double approve
+            if ($afkir->status !== 'pending') {
+                abort(403, 'Afkir sudah diproses');
+            }
+
+            // validasi stok
+            if ($afkir->aset->jumlah < $afkir->jumlah) {
+                abort(400, 'Stok aset tidak mencukupi');
+            }
+
+            // kurangi stok aset
+            $afkir->aset->decrement('jumlah', $afkir->jumlah);
+
+            // update status afkir
+            $afkir->update([
+                'status' => 'approved'
+            ]);
+        });
+
+        return back()->with('success', 'Afkir berhasil disetujui & stok diperbarui');
+    }
+
+    public function reject($id)
+    {
+        $afkir = Afkir::findOrFail($id);
+
+        if ($afkir->status !== 'pending') {
+            abort(403, 'Afkir sudah diproses');
+        }
+
+        $afkir->update([
+            'status' => 'rejected'
+        ]);
+
+        return back()->with('success', 'Afkir berhasil ditolak');
     }
 }
