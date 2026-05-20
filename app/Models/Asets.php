@@ -14,6 +14,7 @@ class Asets extends Model
     protected $casts = [
         'tgl_beli' => 'date',   // ⬅️ INI PENTING
         'harga' => 'float',
+        'tanggalMutasi' => 'date',
     ];
 
     public function type()

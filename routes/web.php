@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\AsetsController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\AfkirController;
 use App\Http\Controllers\LoginauthController;
+use App\Http\Controllers\ScanController;
 
 /*
 |--------------------------------------------------------------------------
@@ -39,6 +40,22 @@ Route::get('/asets/{id}/download-qr-multiple', [AsetsController::class, 'downloa
     ->name('downloadQRMultiple');
 // Route::get('/asets/{id}/download-qr', [AsetsController::class, 'downloadQR'])->name('downloadQR');
 
+Route::middleware(['auth'])->get('/menu', function () {
+    return view('menu');
+})->name('home.menu');
+
+// SCANNER
+Route::middleware(['auth', 'checkRole:admin,yayasan,ks'])->group(function () {
+    Route::get('/scan', function () {
+        return view('scan');
+    })->name('scan.index');
+});
+
+// web.php
+Route::get('/scan', [ScanController::class, 'index'])->name('scan.index');
+Route::post('/scan/process', [ScanController::class, 'process']);
+
+// DASHBOARD ADMIN
 Route::group(['middleware' => ['auth', 'checkRole:admin']], function(){
     Route::prefix('admin')->group(function () {
         Route::get('/', [DashboardController::class, 'index'])->name('admin.dashboard');
@@ -77,6 +94,7 @@ Route::group(['middleware' => ['auth', 'checkRole:admin']], function(){
     });
 });
 
+// DASHBOARD SARPRA
 Route::group(['middleware' => ['auth', 'checkRole:sarpra,admin,ks']], function(){
     Route::prefix('assets')->group(function () {
         Route::get('/', [DashboardController::class, 'index'])->name('sarpra.dashboard');

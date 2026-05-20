@@ -97,6 +97,20 @@
                 </div>
             </div>
 
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Mutasi ke</strong></div>
+                <div class="col-md-8">
+                    {{ $aset->mutasi ?? "-" }}
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-4"><strong>Tanggal Mutasi</strong></div>
+                <div class="col-md-8">
+                    {{ $aset->tanggalMutasi?->format('d-m-Y') ?? '-' }}
+                </div>
+            </div>
+
             @if($aset->deskripsi)
             <div class="row mb-3">
                 <div class="col-md-4"><strong>Deskripsi</strong></div>

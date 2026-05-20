@@ -128,7 +128,11 @@
                             <!-- TANGGAL BELI -->
                             <div class="mb-4">
                                 <label class="form-label" for="tgl_beli">Tanggal Beli</label>
-                                <input type="date" class="form-control" id="tgl_beli" name="tgl_beli" value="{{$item->tgl_beli}}">
+                                <input type="date" 
+                                    class="form-control" 
+                                    id="tgl_beli" 
+                                    name="tgl_beli" 
+                                    value="{{ old('tgl_beli', $item->tgl_beli?->format('Y-m-d')) }}">
                             </div>
 
                             <!-- SUMBER DANA -->
@@ -150,6 +154,22 @@
                                         DCS
                                     </option>
                                 </select>
+                            </div>
+
+                            <!-- MUTASI -->
+                            <div class="mb-4">
+                                <label class="form-label" for="mutasi">Mutasi</label>
+                                <input type="text" class="form-control" id="mutasi" name="mutasi" value="{{$item->mutasi}}">
+                            </div>
+
+                            <!-- TANGGAL MUTASI -->
+                            <div class="mb-4">
+                                <label class="form-label" for="tanggalMutasi">Tanggal Mutasi</label>
+                                <input type="date" 
+                                    class="form-control" 
+                                    id="tanggalMutasi" 
+                                    name="tanggalMutasi" 
+                                    value="{{ old('tanggalMutasi', $item->tanggalMutasi?->format('Y-m-d')) }}">
                             </div>
 
                             <div>

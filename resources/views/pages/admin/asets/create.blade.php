@@ -88,7 +88,7 @@
                       <input type="text" class="form-control" id="jumlah" name="jumlah" placeholder="Jumlah">
                     </div>
                     <div class="mb-4">
-                      <label class="form-label" for="harga">Harga Beli</label>
+                      <label class="form-label" for="harga">Harga Beli</label> <span class="text-danger">*</span>
                       <input type="text" class="form-control" id="harga" name="harga" placeholder="Harga Beli">
                     </div>
                     <div class="mb-4">
@@ -102,6 +102,14 @@
                         <option value="Pemerintah / BOS">Pemerintah / BOS</option>
                         <option value="DCS">DCS</option>
                       </select>
+                    </div>
+                    <div class="mb-4">
+                      <label class="form-label" for="mutasi">Mutasi ke</label>
+                      <input type="text" class="form-control" id="mutasi" name="mutasi" placeholder="Mutasi ke">
+                    </div>
+                    <div class="mb-4">
+                      <label class="form-label" for="tanggalMutasi">Tanggal Mutasi</label>
+                      <input type="date" class="form-control" id="tanggalMutasi" name="tanggalMutasi" placeholder="Tanggal Mutasi" min="{{ date('Y-m-d') }}">
                     </div>
                     <span style="font-weight:bold">Note:</span> <span class="text-danger">*) Wajib untuk diisi</span>
                     <div>

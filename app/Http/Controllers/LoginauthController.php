@@ -28,26 +28,29 @@ class LoginauthController extends Controller
         if (Auth::attempt($request->only('email', 'password'))) {
             $request->session()->regenerate();
 
-            // Cek role
-            if (Auth::user()->role == 'admin') {
-                return redirect()->route('admin.dashboard')
-                    ->with('success', 'Berhasil login sebagai admin');
-            }
+            $role = Auth::user()->role;
 
-            if (Auth::user()->role == 'sarpra') {
-                return redirect()->route('sarpra.dashboard')
-                    ->with('success', 'Berhasil login sebagai sarpra');
-            }
+            switch ($role) {
+                case 'admin':
+                    return redirect()->route('admin.dashboard')
+                        ->with('success', 'Berhasil login sebagai admin');
 
-            if (Auth::user()->role == 'ks') {
-                return redirect()->route('sarpra.dashboard')
-                    ->with('success', 'Berhasil login sebagai Kepala Sekolah');
-            }
+                case 'sarpra':
+                    return redirect()->route('sarpra.dashboard')
+                        ->with('success', 'Berhasil login sebagai sarpra');
 
-            return redirect()->back()->with('error', 'Role tidak dikenali.');
+                case 'ks':
+                    return redirect()->route('home.menu')
+                        ->with('success', 'Silakan pilih menu');
+
+                default:
+                    // semua role selain admin & sarpra masuk menu
+                    return redirect()->route('home.menu')
+                        ->with('success', 'Silakan pilih menu');
+            }
         }
 
-        // Jika gagal login → kasih notif error
+        // Jika gagal login
         return redirect()->back()
             ->with('error', 'Email atau password salah!')
             ->withInput();

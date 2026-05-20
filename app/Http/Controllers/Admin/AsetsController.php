@@ -115,9 +115,9 @@ class AsetsController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
+
     public function store(Request $request)
     {
-        // ================= VALIDASI =================
         $data = $request->validate([
             'nama'          => 'required|string',
             'type_id'       => 'required|integer',
@@ -130,48 +130,38 @@ class AsetsController extends Controller
             'deskripsi'     => 'nullable|string',
             'other_lokasi'  => 'nullable|string',
             'sumber'        => 'required|string',
-            'kode_brg'        => 'required|string',
+            'kode_brg'      => 'required|string',
+            'mutasi'        => 'nullable|string',
+            'tanggalMutasi' => 'nullable|date',
         ]);
 
-        // ================= NORMALISASI DATA =================
+        // NORMALISASI
         foreach ($data as $key => $value) {
             if ($value === '') {
                 $data[$key] = null;
             }
         }
 
-        // ================= HANDLE RUANG =================
+        // HANDLE RUANG
         if ($request->ruang_id === 'OTHER') {
             $data['ruang_id'] = null;
-            $tempat = $data['other_lokasi'];
         } else {
             $data['other_lokasi'] = null;
-            $ruang = Ruang::find($request->ruang_id);
-            $tempat = $ruang?->nama ?? 'Unknown';
         }
 
-        // ================= DATA QR =================
-        $qrData = "Nama: {$data['nama']}\n"
-            . "Kode Barang: {$data['kode_brg']}\n"
-            . "Type ID: {$data['type_id']}\n"
-            . "Unit ID: {$data['unit_id']}\n"
-            . "Brand: {$data['brand']}\n"
-            . "Jumlah: {$data['jumlah']}\n"
-            . "Harga: " . ($data['harga'] ?? '-') . "\n"
-            . "Tanggal Beli: " . ($data['tgl_beli'] ?? '-') . "\n"
-            . "Ruang: {$tempat}\n"
-            . "Sumber: {$data['sumber']}";
+        // ✅ PENTING: isi barcode dummy dulu
+        $data['barcode'] = 'temp.png';
 
-        // ================= WARNA QR & TEKS =================
-        if ($data['sumber'] === 'Pemerintah / BOS') {
-            $qrColor   = [150, 0, 0];   // merah tua
-            $textColor = '#8B0000';
-        } else {
-            $qrColor   = [0, 0, 0];     // hitam
-            $textColor = '#000000';
-        }
+        // ================= SIMPAN =================
+        $aset = Asets::create($data);
 
-        // ================= GENERATE QR BASE =================
+        // ================= QR =================
+        $qrData = route('asets.show', $aset->id);
+
+        $qrColor = $aset->sumber === 'Pemerintah / BOS'
+            ? [150, 0, 0]
+            : [0, 0, 0];
+
         $qrImage = QrCode::format('png')
             ->size(300)
             ->margin(2)
@@ -179,29 +169,24 @@ class AsetsController extends Controller
             ->backgroundColor(255, 255, 255)
             ->generate($qrData);
 
-        // ================= INTERVENTION IMAGE v3 =================
         $manager = new ImageManager(new Driver());
-
         $qr      = $manager->read((string) $qrImage);
         $canvas  = $manager->create(300, 360)->fill('#ffffff');
 
-        // tempel QR
         $canvas->place($qr, 'top');
 
-        // teks nama barang
         $canvas->text(
-            $data['nama'],
+            $aset->nama,
             150,
             320,
-            function ($font) use ($textColor) {
+            function ($font) {
                 $font->filename(public_path('fonts/arial.ttf'));
                 $font->size(18);
-                $font->color($textColor);
+                $font->color('#000000');
                 $font->align('center');
             }
         );
 
-        // ================= SIMPAN FILE =================
         $fileName = 'qrcode_' . time() . '.png';
         $path     = 'qrcodes/' . $fileName;
 
@@ -210,16 +195,124 @@ class AsetsController extends Controller
             $canvas->encode(new PngEncoder())
         );
 
-        $data['barcode'] = $path;
+        // ================= UPDATE BARCODE =================
+        $aset->update([
+            'barcode' => $path
+        ]);
 
-        // ================= SIMPAN KE DB =================
-        Asets::create($data);
-
-        // ================= REDIRECT =================
         return redirect()
             ->route('asets.index')
-            ->with('success', 'Data aset berhasil ditambahkan dan QR Code berhasil dibuat');
+            ->with('success', 'Data aset berhasil ditambahkan + QR siap dipakai 🔥');
     }
+    // public function store(Request $request)
+    // {
+    //     // ================= VALIDASI =================
+    //     $data = $request->validate([
+    //         'nama'          => 'required|string',
+    //         'type_id'       => 'required|integer',
+    //         'unit_id'       => 'required|integer',
+    //         'brand'         => 'required|string',
+    //         'jumlah'        => 'required|integer',
+    //         'ruang_id'      => 'nullable|string',
+    //         'harga'         => 'nullable|numeric',
+    //         'tgl_beli'      => 'nullable|date',
+    //         'deskripsi'     => 'nullable|string',
+    //         'other_lokasi'  => 'nullable|string',
+    //         'sumber'        => 'required|string',
+    //         'kode_brg'      => 'required|string',
+    //         'mutasi'        => 'nullable|string',
+    //         'tanggalMutasi' => 'nullable|date',
+    //     ]);
+
+    //     // ================= NORMALISASI DATA =================
+    //     foreach ($data as $key => $value) {
+    //         if ($value === '') {
+    //             $data[$key] = null;
+    //         }
+    //     }
+
+    //     // ================= HANDLE RUANG =================
+    //     if ($request->ruang_id === 'OTHER') {
+    //         $data['ruang_id'] = null;
+    //         $tempat = $data['other_lokasi'];
+    //     } else {
+    //         $data['other_lokasi'] = null;
+    //         $ruang = Ruang::find($request->ruang_id);
+    //         $tempat = $ruang?->nama ?? 'Unknown';
+    //     }
+
+    //     // ================= DATA QR =================
+    //     $qrData = "Nama: {$data['nama']}\n"
+    //         . "Kode Barang: {$data['kode_brg']}\n"
+    //         . "Type ID: {$data['type_id']}\n"
+    //         . "Unit ID: {$data['unit_id']}\n"
+    //         . "Brand: {$data['brand']}\n"
+    //         . "Jumlah: {$data['jumlah']}\n"
+    //         . "Harga: " . ($data['harga'] ?? '-') . "\n"
+    //         . "Tanggal Beli: " . ($data['tgl_beli'] ?? '-') . "\n"
+    //         . "Ruang: {$tempat}\n"
+    //         . "Sumber: {$data['sumber']}\n"
+    //         . "Mutasi ke: {$data['mutasi']}\n"
+    //         . "Tanggal mutasi: {$data['tanggalMutasi']}\n";
+
+    //     // ================= WARNA QR & TEKS =================
+    //     if ($data['sumber'] === 'Pemerintah / BOS') {
+    //         $qrColor   = [150, 0, 0];   // merah tua
+    //         $textColor = '#8B0000';
+    //     } else {
+    //         $qrColor   = [0, 0, 0];     // hitam
+    //         $textColor = '#000000';
+    //     }
+
+    //     // ================= GENERATE QR BASE =================
+    //     $qrImage = QrCode::format('png')
+    //         ->size(300)
+    //         ->margin(2)
+    //         ->color($qrColor[0], $qrColor[1], $qrColor[2])
+    //         ->backgroundColor(255, 255, 255)
+    //         ->generate($qrData);
+
+    //     // ================= INTERVENTION IMAGE v3 =================
+    //     $manager = new ImageManager(new Driver());
+
+    //     $qr      = $manager->read((string) $qrImage);
+    //     $canvas  = $manager->create(300, 360)->fill('#ffffff');
+
+    //     // tempel QR
+    //     $canvas->place($qr, 'top');
+
+    //     // teks nama barang
+    //     $canvas->text(
+    //         $data['nama'],
+    //         150,
+    //         320,
+    //         function ($font) use ($textColor) {
+    //             $font->filename(public_path('fonts/arial.ttf'));
+    //             $font->size(18);
+    //             $font->color($textColor);
+    //             $font->align('center');
+    //         }
+    //     );
+
+    //     // ================= SIMPAN FILE =================
+    //     $fileName = 'qrcode_' . time() . '.png';
+    //     $path     = 'qrcodes/' . $fileName;
+
+    //     Storage::disk('public')->put(
+    //         $path,
+    //         $canvas->encode(new PngEncoder())
+    //     );
+
+    //     $data['barcode'] = $path;
+
+    //     // ================= SIMPAN KE DB =================
+    //     Asets::create($data);
+
+    //     // ================= REDIRECT =================
+    //     return redirect()
+    //         ->route('asets.index')
+    //         ->with('success', 'Data aset berhasil ditambahkan dan QR Code berhasil dibuat');
+    // }
 
     /**
      * Display the specified resource.
@@ -281,9 +374,131 @@ class AsetsController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
+    // public function update(Request $request, $id)
+    // {
+    //     // ================= VALIDASI =================
+    //     $data = $request->validate([
+    //         'unit_id'       => 'required|integer',
+    //         'type_id'       => 'required|integer',
+    //         'nama'          => 'required|string',
+    //         'brand'         => 'nullable|string',
+    //         'harga'         => 'nullable|string',
+    //         'tgl_beli'      => 'nullable|date',
+    //         'sumber'        => 'required|string',
+    //         'ruang_id'      => 'required|string',
+    //         'other_lokasi'  => 'nullable|string',
+    //         'mutasi'        => 'nullable|string',
+    //         'tanggalMutasi' => 'nullable|date',
+    //     ]);
+
+    //     // ================= NORMALISASI HARGA =================
+    //     if (!empty($data['harga'])) {
+    //         $data['harga'] = (int) preg_replace('/\D/', '', $data['harga']);
+    //     } else {
+    //         $data['harga'] = null;
+    //     }
+
+    //     $aset = Asets::findOrFail($id);
+
+    //     // ================= HANDLE RUANG =================
+    //     if ($request->ruang_id === 'OTHER') {
+    //         $data['ruang_id'] = null;
+    //         $tempat = $request->other_lokasi;
+    //     } else {
+    //         $data['other_lokasi'] = null;
+    //         $ruang = Ruang::find($request->ruang_id);
+    //         $tempat = $ruang?->nama ?? 'Unknown';
+    //     }
+
+    //     // ================= CEK PERUBAHAN =================
+    //     $needRegenerateQr =
+    //         $aset->nama !== $data['nama'] ||
+    //         $aset->sumber !== $data['sumber'] ||
+    //         $aset->mutasi !== $data['mutasi'] ||
+    //         $aset->harga != $data['harga'] ||
+    //         $aset->ruang_id != $data['ruang_id'];
+
+    //     // ================= UPDATE DATA =================
+    //     $aset->update($data);
+
+    //     // ================= REGENERATE QR =================
+    //     if ($needRegenerateQr) {
+
+    //         // DATA QR
+    //         $qrData =
+    //             "Nama: {$aset->nama}\n" .
+    //             "Kode Barang: {$aset->kode_brg}\n" .
+    //             "Brand: {$aset->brand}\n" .
+    //             "Harga: " . ($aset->harga ? number_format($aset->harga, 0, ',', '.') : '-') . "\n" .
+    //             "Tanggal Beli: " . ($aset->tgl_beli ?? '-') . "\n" .
+    //             "Ruang: {$tempat}\n" .
+    //             "Sumber: {$aset->sumber}\n" .
+    //             "Mutasi: {$aset->mutasi}\n" .
+    //             "Tanggal Mutasi: {$aset->tanggalMutasi}";
+
+    //         // WARNA QR
+    //         $qrColor = $aset->sumber === 'Pemerintah / BOS'
+    //             ? [150, 0, 0]   // merah
+    //             : [0, 0, 0];    // hitam
+
+    //         // HAPUS QR LAMA
+    //         if ($aset->barcode && Storage::disk('public')->exists($aset->barcode)) {
+    //             Storage::disk('public')->delete($aset->barcode);
+    //         }
+
+    //         // ================= GENERATE QR TEMP =================
+    //         $tempQrPath = storage_path('app/temp_qr.png');
+
+    //         file_put_contents(
+    //             $tempQrPath,
+    //             QrCode::format('png')
+    //                 ->size(300)
+    //                 ->margin(2)
+    //                 ->color($qrColor[0], $qrColor[1], $qrColor[2])
+    //                 ->backgroundColor(255, 255, 255)
+    //                 ->generate($qrData)
+    //         );
+
+    //         // ================= CANVAS + TEKS =================
+    //         $manager = new ImageManager(new Driver());
+
+    //         $canvas = $manager->create(300, 360)->fill('#ffffff');
+    //         $qr     = $manager->read($tempQrPath);
+
+    //         // tempel QR
+    //         $canvas->place($qr, 'top');
+
+    //         // teks nama barang
+    //         $canvas->text($aset->nama, 150, 320, function ($font) {
+    //             $font->size(18);
+    //             $font->filename(public_path('fonts/arial.ttf'));
+    //             $font->color('#000000');
+    //             $font->align('center');
+    //             $font->valign('middle');
+    //         });
+
+    //         // ================= SIMPAN =================
+    //         $fileName = 'qrcode_' . time() . '.png';
+    //         $path = 'qrcodes/' . $fileName;
+
+    //         Storage::disk('public')->put(
+    //             $path,
+    //             (string) $canvas->encode(new PngEncoder())
+    //         );
+
+    //         @unlink($tempQrPath);
+
+    //         $aset->update([
+    //             'barcode' => $path
+    //         ]);
+    //     }
+
+    //     return redirect()
+    //         ->route('asets.index')
+    //         ->with('success', 'Data aset & QR Code berhasil diperbarui');
+    // }
     public function update(Request $request, $id)
     {
-        // ================= VALIDASI =================
         $data = $request->validate([
             'unit_id'       => 'required|integer',
             'type_id'       => 'required|integer',
@@ -294,9 +509,11 @@ class AsetsController extends Controller
             'sumber'        => 'required|string',
             'ruang_id'      => 'required|string',
             'other_lokasi'  => 'nullable|string',
+            'mutasi'        => 'nullable|string',
+            'tanggalMutasi' => 'nullable|date',
         ]);
 
-        // ================= NORMALISASI HARGA =================
+        // NORMALISASI HARGA
         if (!empty($data['harga'])) {
             $data['harga'] = (int) preg_replace('/\D/', '', $data['harga']);
         } else {
@@ -305,137 +522,20 @@ class AsetsController extends Controller
 
         $aset = Asets::findOrFail($id);
 
-        // ================= HANDLE RUANG =================
+        // HANDLE RUANG
         if ($request->ruang_id === 'OTHER') {
             $data['ruang_id'] = null;
-            $tempat = $request->other_lokasi;
         } else {
             $data['other_lokasi'] = null;
-            $ruang = Ruang::find($request->ruang_id);
-            $tempat = $ruang?->nama ?? 'Unknown';
         }
 
-        // ================= CEK PERUBAHAN =================
-        $needRegenerateQr =
-            $aset->nama !== $data['nama'] ||
-            $aset->sumber !== $data['sumber'] ||
-            $aset->harga != $data['harga'] ||
-            $aset->ruang_id != $data['ruang_id'];
-
-        // ================= UPDATE DATA =================
+        // ================= UPDATE SAJA =================
         $aset->update($data);
-
-        // ================= REGENERATE QR =================
-        if ($needRegenerateQr) {
-
-            // DATA QR
-            $qrData =
-                "Nama: {$aset->nama}\n" .
-                "Kode Barang: {$aset->kode_brg}\n" .
-                "Brand: {$aset->brand}\n" .
-                "Harga: " . ($aset->harga ? number_format($aset->harga, 0, ',', '.') : '-') . "\n" .
-                "Tanggal Beli: " . ($aset->tgl_beli ?? '-') . "\n" .
-                "Ruang: {$tempat}\n" .
-                "Sumber: {$aset->sumber}";
-
-            // WARNA QR
-            $qrColor = $aset->sumber === 'Pemerintah / BOS'
-                ? [150, 0, 0]   // merah
-                : [0, 0, 0];    // hitam
-
-            // HAPUS QR LAMA
-            if ($aset->barcode && Storage::disk('public')->exists($aset->barcode)) {
-                Storage::disk('public')->delete($aset->barcode);
-            }
-
-            // ================= GENERATE QR TEMP =================
-            $tempQrPath = storage_path('app/temp_qr.png');
-
-            file_put_contents(
-                $tempQrPath,
-                QrCode::format('png')
-                    ->size(300)
-                    ->margin(2)
-                    ->color($qrColor[0], $qrColor[1], $qrColor[2])
-                    ->backgroundColor(255, 255, 255)
-                    ->generate($qrData)
-            );
-
-            // ================= CANVAS + TEKS =================
-            $manager = new ImageManager(new Driver());
-
-            $canvas = $manager->create(300, 360)->fill('#ffffff');
-            $qr     = $manager->read($tempQrPath);
-
-            // tempel QR
-            $canvas->place($qr, 'top');
-
-            // teks nama barang
-            $canvas->text($aset->nama, 150, 320, function ($font) {
-                $font->size(18);
-                $font->filename(public_path('fonts/arial.ttf'));
-                $font->color('#000000');
-                $font->align('center');
-                $font->valign('middle');
-            });
-
-            // ================= SIMPAN =================
-            $fileName = 'qrcode_' . time() . '.png';
-            $path = 'qrcodes/' . $fileName;
-
-            Storage::disk('public')->put(
-                $path,
-                (string) $canvas->encode(new PngEncoder())
-            );
-
-            @unlink($tempQrPath);
-
-            $aset->update([
-                'barcode' => $path
-            ]);
-        }
 
         return redirect()
             ->route('asets.index')
-            ->with('success', 'Data aset & QR Code berhasil diperbarui');
+            ->with('success', 'Data aset berhasil diperbarui (QR tetap sama) ✅');
     }
-
-    // public function update(Request $request, $id)
-    // {
-    //     $request->validate([
-    //         'unit_id' => 'required',
-    //         'type_id' => 'required',
-    //         'nama' => 'required',
-    //         'brand' => 'nullable|string',
-    //         'sumber' => 'required|string',
-    //         'ruang_id' => 'required',
-    //         'other_lokasi' => 'nullable|string'
-    //     ]);
-
-    //     $item = Asets::findOrFail($id);
-
-    //     // Jika pilih OTHER
-    //     if ($request->ruang_id === 'OTHER') {
-    //         $item->ruang_id = null;
-    //         $item->other_lokasi = $request->other_lokasi; // simpan lokasi custom
-    //     } else {
-    //         $item->ruang_id = $request->ruang_id;
-    //         $item->other_lokasi = null; // pastikan tidak dobel
-    //     }
-
-    //     $item->unit_id = $request->unit_id;
-    //     $item->type_id = $request->type_id;
-    //     $item->nama = $request->nama;
-    //     $item->kode_brg = $request->kode_brg;
-    //     $item->brand = $request->brand;
-    //     $item->harga = $request->harga;
-    //     $item->tgl_beli = $request->tgl_beli;
-    //     $item->sumber = $request->sumber;
-
-    //     $item->save();
-
-    //     return redirect()->route('asets.index')->with('success', 'Data asset berhasil diperbarui!');
-    // }
 
     /**
      * Remove the specified resource from storage.
